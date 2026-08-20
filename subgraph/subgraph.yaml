@@ -1,0 +1,85 @@
+# specVersion 1.0.0 is required for `indexerHints`; graph-cli >= 0.60 understands it.
+specVersion: 1.0.0
+description: >
+  Pumper.fun — bonding-curve token launchpad on Base with automatic Uniswap V2 migration.
+  Every token, trade, price point and migration is reconstructed from the launchpad's events.
+repository: https://github.com/pumperdotfun/pumperdotfun
+
+# `auto` lets the indexer prune history it no longer needs to serve current queries, which keeps
+# a Studio deployment cheap. Switch to `never` if you intend to run time-travel queries against
+# historical blocks.
+indexerHints:
+  prune: auto
+
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # A single data source discovers everything: TokenCreated is the only token-discovery
+  # mechanism, exactly as the protocol was designed for (spec §7).
+  #
+  # `address` and `startBlock` are filled in by `npm run sync` from
+  # contracts/deployments/<network>.json — do not edit them by hand.
+  - kind: ethereum/contract
+    name: PumperFactory
+    network: base
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: PumperFactory
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      file: ./src/factory.ts
+      entities:
+        - Protocol
+        - Creator
+        - Token
+        - Trade
+        - PricePoint
+        - Candle
+        - Migration
+        - PlatformFee
+      abis:
+        - name: PumperFactory
+          file: ./abis/PumperFactory.json
+        - name: PumperToken
+          file: ./abis/PumperToken.json
+      eventHandlers:
+        - event: TokenCreated(indexed address,indexed address,string,string,uint256,uint256,uint256,uint256,uint256)
+          handler: handleTokenCreated
+        - event: TokenBought(indexed address,indexed address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleTokenBought
+        - event: TokenSold(indexed address,indexed address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleTokenSold
+        - event: MigrationTriggered(indexed address,uint256,uint256,uint256)
+          handler: handleMigrationTriggered
+        - event: LiquidityMigrated(indexed address,indexed address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleLiquidityMigrated
+        - event: PlatformFeeCollected(indexed address,indexed address,indexed uint8,uint256,uint256)
+          handler: handlePlatformFeeCollected
+
+templates:
+  # Spawned by handleTokenCreated. Tracks holder balances through curve trades, peer-to-peer
+  # transfers and post-migration Uniswap activity alike.
+  - kind: ethereum/contract
+    name: PumperToken
+    network: base
+    source:
+      abi: PumperToken
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      file: ./src/token.ts
+      entities:
+        - Account
+        - Holder
+        - Token
+      abis:
+        - name: PumperToken
+          file: ./abis/PumperToken.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer

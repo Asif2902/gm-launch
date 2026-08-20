@@ -1,0 +1,226 @@
+# =============================================================================================
+# Pumper.fun subgraph schema
+#
+# Mirrors the entity model of the custom Node indexer (indexer/db/schema.sql) so either can back
+# the same frontend. All uint256 values are BigInt; prices are wei per whole token.
+# =============================================================================================
+
+"Global protocol singleton (id: \"pumper\")."
+type Protocol @entity {
+  id: ID!
+  factory: Bytes!
+  tokenCount: Int!
+  migratedCount: Int!
+  tradeCount: Int!
+  totalVolumeEth: BigInt!
+  totalFeesEth: BigInt!
+  totalEthLocked: BigInt!
+  totalSupplyPerToken: BigInt!
+  virtualEthReserve: BigInt!
+  migrationThreshold: BigInt!
+}
+
+"An address that has launched at least one token (id: creator address)."
+type Creator @entity {
+  id: ID!
+  address: Bytes!
+  tokensCreated: Int!
+  tokensMigrated: Int!
+  firstSeenAt: BigInt!
+  lastSeenAt: BigInt!
+  tokens: [Token!]! @derivedFrom(field: "creator")
+}
+
+"A launched token and its live bonding-curve state (id: token address)."
+type Token @entity {
+  id: ID!
+  address: Bytes!
+  creator: Creator!
+  name: String!
+  symbol: String!
+  decimals: Int!
+
+  # genesis parameters, straight from TokenCreated
+  totalSupply: BigInt!
+  initialVirtualEthReserve: BigInt!
+  initialVirtualTokenReserve: BigInt!
+  migrationThreshold: BigInt!
+
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTx: Bytes!
+
+  "1 = trading, 2 = pending migration, 3 = migrated"
+  status: Int!
+
+  # live curve state, updated on every trade
+  ethReserve: BigInt!
+  virtualEthReserve: BigInt!
+  tokenReserve: BigInt!
+  virtualTokenReserve: BigInt!
+  price: BigInt!
+  marketCap: BigInt!
+  "Highest market cap ever reached. A high-water mark: it never decreases."
+  athMarketCap: BigInt!
+  fullyDilutedValuation: BigInt!
+  circulatingSupply: BigInt!
+  migrationProgressBps: Int!
+
+  # cumulative counters
+  volumeEth: BigInt!
+  buyVolumeEth: BigInt!
+  sellVolumeEth: BigInt!
+  tokensBought: BigInt!
+  tokensSold: BigInt!
+  feesEth: BigInt!
+  tradeCount: Int!
+  buyCount: Int!
+  sellCount: Int!
+  holderCount: Int!
+
+  pair: Bytes
+  migratedAt: BigInt
+  lastTradeAt: BigInt
+
+  trades: [Trade!]! @derivedFrom(field: "token")
+  pricePoints: [PricePoint!]! @derivedFrom(field: "token")
+  "Reverse relation to OHLCV buckets. Lets a token list pull its own 24h volume in one query."
+  candles: [Candle!]! @derivedFrom(field: "token")
+  holders: [Holder!]! @derivedFrom(field: "token")
+  fees: [PlatformFee!]! @derivedFrom(field: "token")
+  migration: Migration @derivedFrom(field: "token")
+}
+
+"A buy or a sell on the bonding curve (id: txHash-logIndex)."
+type Trade @entity(immutable: true) {
+  id: ID!
+  token: Token!
+  trader: Bytes!
+  "BUY or SELL"
+  side: TradeSide!
+
+  "Gross ETH paid by the buyer. Zero for sells."
+  ethIn: BigInt!
+  "ETH received by the seller, after the fee. Zero for buys."
+  ethOut: BigInt!
+  "Curve-side ETH: post-fee input on a buy, pre-fee output on a sell. This is the volume figure."
+  grossEth: BigInt!
+  fee: BigInt!
+  tokenAmount: BigInt!
+
+  "Post-trade spot price, wei per whole token."
+  price: BigInt!
+  "Realised price for the trader: ethIn/tokensOut on a buy, ethOut/tokensIn on a sell."
+  executionPrice: BigInt!
+
+  ethReserve: BigInt!
+  virtualEthReserve: BigInt!
+  tokenReserve: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+  logIndex: BigInt!
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+"One price observation per trade (id: txHash-logIndex)."
+type PricePoint @entity(immutable: true) {
+  id: ID!
+  token: Token!
+  price: BigInt!
+  ethReserve: BigInt!
+  tokenReserve: BigInt!
+  marketCap: BigInt!
+  volumeEth: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+"OHLCV bucket (id: token-intervalSecs-bucketStart)."
+type Candle @entity {
+  id: ID!
+  token: Token!
+  intervalSecs: Int!
+  bucketStart: BigInt!
+  open: BigInt!
+  high: BigInt!
+  low: BigInt!
+  close: BigInt!
+  volumeEth: BigInt!
+  tradeCount: Int!
+}
+
+"A token balance (id: token-address). Maintained from ERC-20 Transfer logs."
+type Holder @entity {
+  id: ID!
+  token: Token!
+  account: Account!
+  address: Bytes!
+  balance: BigInt!
+  firstSeenAt: BigInt!
+  lastSeenAt: BigInt!
+}
+
+"""
+Any address that has ever held a Pumper token (id: address).
+
+This is what backs a user profile page: one query returns every position the address holds,
+across every token, without the client knowing which tokens to ask about. Balances derive from
+Transfer logs, so they remain correct through peer-to-peer sends and post-migration Uniswap
+trades — neither of which emit launchpad events.
+"""
+type Account @entity {
+  id: ID!
+  address: Bytes!
+  "Live positions. Filter with `where: { balance_gt: 0 }` for the current portfolio."
+  holdings: [Holder!]! @derivedFrom(field: "account")
+  "Number of distinct tokens currently held with a non-zero balance."
+  positionCount: Int!
+  "Tokens this address has launched."
+  tokensCreated: Int!
+  "Curve trades made by this address."
+  tradeCount: Int!
+  "Lifetime curve-side ETH traded, the same basis as Token.volumeEth."
+  volumeEth: BigInt!
+  firstSeenAt: BigInt!
+  lastSeenAt: BigInt!
+}
+
+"Migration lifecycle for a token (id: token address)."
+type Migration @entity {
+  id: ID!
+  token: Token!
+  pair: Bytes
+
+  triggeredAt: BigInt
+  triggeredAtBlock: BigInt
+  triggeredEthReserve: BigInt
+  triggeredTokenReserve: BigInt
+
+  completedAt: BigInt
+  completedAtBlock: BigInt
+  completedTx: Bytes
+  ethDeposited: BigInt
+  tokensDeposited: BigInt
+  tokensBurned: BigInt
+  lpTokensBurned: BigInt
+  openingPrice: BigInt
+}
+
+"An individual platform fee event (id: txHash-logIndex)."
+type PlatformFee @entity(immutable: true) {
+  id: ID!
+  token: Token!
+  user: Bytes!
+  "0 = buy, 1 = sell"
+  action: Int!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}

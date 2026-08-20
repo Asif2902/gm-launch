@@ -1,0 +1,28 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployedAt": "2026-08-16T10:25:50.800Z",
+  "deploymentBlock": 45553287,
+  "deployer": "0x7d9Cb2994D86B6a4e65761B5d81DADa69ce54a7f",
+  "contracts": {
+    "PumperFactory": "0x2Da4d9B4ACB120ae4Fc30ef4bc88a4D7Ddc12Aa3",
+    "UniswapV2Migrator": "0x9D93B61e725512325FA251ffC1Ef363806f24836",
+    "PumperTokenImplementation": "0x3FAB52C5f38231d4b3F1Ba3e1d9417aD85D1cdFA"
+  },
+  "external": {
+    "uniswapV2Factory": "0xc9875202f37CE80de80FFCCAc5160B2753Afca5d",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "uniswapV2FactoryIsOurs": true
+  },
+  "config": {
+    "feeRecipient": "0x6e0df2d65d309b55B217B5237657302386E75584",
+    "owner": "0x6900b415c34356f6666f56f3c5bbB136E2ae3D34"
+  },
+  "constants": {
+    "totalSupply": "1000000000000000000000000000",
+    "virtualEthReserve": "500000000000000000",
+    "migrationThreshold": "5000000000000000000",
+    "buyFeeBps": 20,
+    "sellFeeBps": 30
+  }
+}

@@ -1,0 +1,282 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    @apply bg-canvas font-sans text-white antialiased;
+  }
+
+  body {
+    font-feature-settings: "cv02" 1, "cv11" 1;
+    overflow-x: hidden;
+  }
+
+  /* Headings and figures take the display face; body copy stays on Inter. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+  }
+
+  /**
+   * Figures that sit in a column or update in place.
+   *
+   * Tabular numerals stop a price from jittering sideways as digits change, and the display face
+   * is used because its numerals are the more legible of the two at small sizes.
+   */
+  .tnum {
+    @apply font-display;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: rgb(0 82 255 / 0.35);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dim;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---- surfaces ------------------------------------------------------------------------- */
+
+  .card {
+    @apply relative rounded-2xl border border-line bg-surface;
+  }
+
+  /* Glass panel with a faint top highlight, the way light catches a real edge. */
+  .glass {
+    @apply relative rounded-2xl border border-line;
+    background: linear-gradient(
+      180deg,
+      rgb(26 30 39 / 0.75) 0%,
+      rgb(12 14 19 / 0.9) 100%
+    );
+    backdrop-filter: blur(12px);
+  }
+
+  .glass::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(76 141 255 / 0.45),
+      transparent
+    );
+  }
+
+  /* Card that lights up along the Base-blue edge on hover, with a halo rather than only a
+     border — a 1px edge change is easy to miss on a card this size. */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  .card-hover:hover {
+    @apply -translate-y-1 border-brand/55;
+    box-shadow:
+      0 0 0 1px rgb(0 82 255 / 0.35),
+      0 0 26px -4px rgb(0 82 255 / 0.4),
+      0 18px 40px -18px rgb(0 0 0 / 0.9);
+  }
+
+  /* ---- text ----------------------------------------------------------------------------- */
+
+  .label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-dim;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(100deg, #ffffff 10%, #4c8dff 45%, #0052ff 75%, #ffffff 95%);
+    background-size: 250% auto;
+    @apply animate-gradient-pan;
+  }
+
+  /* ---- buttons -------------------------------------------------------------------------- */
+
+  .btn {
+    @apply relative inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition-all duration-200
+           disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn text-white;
+    background: linear-gradient(135deg, #0052ff 0%, #2f6fff 100%);
+    box-shadow: 0 0 0 1px rgb(76 141 255 / 0.35), 0 8px 24px -10px rgb(0 82 255 / 0.9);
+  }
+  .btn-primary:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 0 0 1px rgb(76 141 255 / 0.6), 0 12px 30px -10px rgb(0 82 255 / 1);
+  }
+  .btn-primary:active {
+    @apply translate-y-0;
+  }
+
+  .btn-buy {
+    @apply btn text-white;
+    background: linear-gradient(135deg, #0ca678 0%, #20d9a0 100%);
+    box-shadow: 0 0 0 1px rgb(32 217 160 / 0.3), 0 8px 24px -10px rgb(12 166 120 / 0.9);
+  }
+  .btn-buy:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 0 0 1px rgb(32 217 160 / 0.55), 0 12px 30px -10px rgb(12 166 120 / 1);
+  }
+
+  .btn-sell {
+    @apply btn text-white;
+    background: linear-gradient(135deg, #e8590c 0%, #ff8341 100%);
+    box-shadow: 0 0 0 1px rgb(255 131 65 / 0.3), 0 8px 24px -10px rgb(232 89 12 / 0.9);
+  }
+  .btn-sell:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 0 0 1px rgb(255 131 65 / 0.55), 0 12px 30px -10px rgb(232 89 12 / 1);
+  }
+
+  .btn-ghost {
+    @apply btn border border-line bg-elevated/80 text-white hover:border-brand/50 hover:bg-raised;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  /* ---- inputs --------------------------------------------------------------------------- */
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-canvas/80 px-3.5 py-3 text-sm text-white
+           outline-none transition-all duration-200
+           placeholder:text-dim focus:border-brand/70;
+  }
+  .input:focus {
+    box-shadow: 0 0 0 3px rgb(0 82 255 / 0.16);
+  }
+
+  /* ---- chips / pills --------------------------------------------------------------------- */
+
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1
+           text-[11px] font-semibold;
+  }
+
+  /* Pill tabs for the feed and leaderboard: the row of filters you scan first, so it reads as
+     text with one highlighted rather than as a row of buttons competing for attention. */
+  .tabs {
+    @apply flex items-center gap-1;
+  }
+  .tab {
+    @apply rounded-full px-3.5 py-2 text-[13px] font-semibold text-muted transition-colors
+           hover:text-white;
+  }
+  .tab[data-active="true"] {
+    @apply bg-elevated text-white;
+  }
+
+  .segmented {
+    @apply flex gap-0.5 rounded-xl border border-line bg-elevated/70 p-1;
+  }
+  .segmented-item {
+    @apply rounded-lg px-3 py-1.5 text-xs font-semibold text-muted transition-all duration-200
+           hover:text-white;
+  }
+  .segmented-item[data-active="true"] {
+    @apply bg-raised text-white;
+    box-shadow: 0 0 0 1px rgb(76 141 255 / 0.25), 0 4px 14px -8px rgb(0 82 255 / 0.9);
+  }
+
+  /* ---- effects --------------------------------------------------------------------------- */
+
+  /* Sweeping highlight used on skeletons and progress bars. */
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+  .shimmer::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.09),
+      transparent
+    );
+  }
+
+  /* Live status dot with an expanding halo. */
+  .live-dot {
+    @apply relative inline-flex h-2 w-2 shrink-0 rounded-full bg-up;
+  }
+  .live-dot::after {
+    content: "";
+    @apply absolute inset-0 animate-pulse-ring rounded-full bg-up;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Fades a horizontally scrolling strip out at both ends. */
+  .mask-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+  }
+}
+
+@layer utilities {
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  .animation-delay-700 {
+    animation-delay: 700ms;
+  }
+}

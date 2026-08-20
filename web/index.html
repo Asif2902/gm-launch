@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>gm Launch — bonding-curve launchpad on Base</title>
+    <meta
+      name="description"
+      content="Launch a token with a name and a ticker. Trade it on a bonding curve. It graduates to Uniswap V2 at 5 ETH with the LP permanently burned."
+    />
+    <!-- Painted before the bundle loads so there is no white flash on a dark app. -->
+    <style>
+      html,
+      body,
+      #root {
+        background: #06070a;
+        margin: 0;
+        min-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,103 @@
+[
+  {
+    "name": "BuyRefunded",
+    "signature": "BuyRefunded(address,address,uint256,uint256)",
+    "indexed": [
+      "token",
+      "buyer"
+    ]
+  },
+  {
+    "name": "EthClaimed",
+    "signature": "EthClaimed(address,uint256,uint256)",
+    "indexed": [
+      "account"
+    ]
+  },
+  {
+    "name": "EthCredited",
+    "signature": "EthCredited(address,uint256,uint256)",
+    "indexed": [
+      "account"
+    ]
+  },
+  {
+    "name": "FeeRecipientUpdated",
+    "signature": "FeeRecipientUpdated(address,address)",
+    "indexed": [
+      "previous",
+      "current"
+    ]
+  },
+  {
+    "name": "FeesWithdrawn",
+    "signature": "FeesWithdrawn(address,uint256,uint256)",
+    "indexed": [
+      "recipient"
+    ]
+  },
+  {
+    "name": "LiquidityMigrated",
+    "signature": "LiquidityMigrated(address,address,uint256,uint256,uint256,uint256,uint256)",
+    "indexed": [
+      "token",
+      "pair"
+    ]
+  },
+  {
+    "name": "MigrationTriggered",
+    "signature": "MigrationTriggered(address,uint256,uint256,uint256)",
+    "indexed": [
+      "token"
+    ]
+  },
+  {
+    "name": "OwnershipTransferStarted",
+    "signature": "OwnershipTransferStarted(address,address)",
+    "indexed": [
+      "previousOwner",
+      "newOwner"
+    ]
+  },
+  {
+    "name": "OwnershipTransferred",
+    "signature": "OwnershipTransferred(address,address)",
+    "indexed": [
+      "previousOwner",
+      "newOwner"
+    ]
+  },
+  {
+    "name": "PlatformFeeCollected",
+    "signature": "PlatformFeeCollected(address,address,uint8,uint256,uint256)",
+    "indexed": [
+      "token",
+      "user",
+      "action"
+    ]
+  },
+  {
+    "name": "TokenBought",
+    "signature": "TokenBought(address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)",
+    "indexed": [
+      "token",
+      "buyer"
+    ]
+  },
+  {
+    "name": "TokenCreated",
+    "signature": "TokenCreated(address,address,string,string,uint256,uint256,uint256,uint256,uint256)",
+    "indexed": [
+      "token",
+      "creator"
+    ]
+  },
+  {
+    "name": "TokenSold",
+    "signature": "TokenSold(address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)",
+    "indexed": [
+      "token",
+      "seller"
+    ]
+  }
+]

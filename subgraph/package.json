@@ -1,0 +1,21 @@
+{
+  "name": "@pumper/subgraph",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Graph subgraph for the Pumper.fun launchpad",
+  "scripts": {
+    "prepare:abis": "node scripts/copy-abis.js",
+    "sync": "node scripts/sync-deployment.js",
+    "codegen": "npm run prepare:abis && graph codegen",
+    "build": "npm run codegen && graph build",
+    "auth": "graph auth",
+    "deploy": "graph deploy dotfun",
+    "create:local": "graph create --node http://localhost:8020/ dotfun",
+    "deploy:local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 dotfun",
+    "remove:local": "graph remove --node http://localhost:8020/ dotfun"
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.80.0",
+    "@graphprotocol/graph-ts": "^0.35.1"
+  }
+}

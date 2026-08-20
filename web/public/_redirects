@@ -1,0 +1,4 @@
+# Client-side routing: every unknown path serves index.html so /token/0x… and /u/handle resolve
+# on a hard refresh or a shared link, instead of 404ing at the host.
+# Read by Netlify and Cloudflare Pages. Vercel uses vercel.json; nginx uses try_files.
+/*    /index.html   200

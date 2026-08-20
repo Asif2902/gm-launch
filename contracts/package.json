@@ -1,0 +1,28 @@
+{
+  "name": "@pumper/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pumper.fun — bonding-curve token launchpad with Uniswap V2 migration (Base Sepolia)",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "coverage": "hardhat coverage",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
+    "deploy:baseSepolia": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:base": "hardhat run scripts/deploy.ts --network base",
+    "seed:baseSepolia": "hardhat run scripts/seed.ts --network baseSepolia",
+    "verify:baseSepolia": "hardhat run scripts/verify.ts --network baseSepolia",
+    "abis": "hardhat run scripts/export-abis.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@uniswap/v2-core": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.10",
+    "typescript": "^5.5.4"
+  }
+}
