@@ -35,7 +35,7 @@
 | `PumperFactory` | Token creation, registry, bonding curve, trading, fee ledger, migration control, **all events** | `Ownable2Step` + `ReentrancyGuard`. Fee rates, curve constants and the threshold are `constant`; token implementation and migrator are `immutable`. |
 | `PumperToken` | The standardized ERC-20 | `ERC20Upgradeable` clone target. No owner, no mint after `initialize`, no hooks, no blacklist. |
 | `BondingCurve` | Pure constant-product math | Stateless library. Holds no `k` — it is re-derived from reserves every call, so rounding cannot accumulate. |
-| `UniswapV2Migrator` | All Uniswap interaction and the LP burn | Three immutables, no owner, no rescue. Every asset that enters in a call leaves in the same call. |
+| `UniswapV2Migrator` | All Uniswap interaction (canonical `UniswapV2Router02` + factory) and the LP burn | Four immutables, no owner, no rescue. Router/factory/WETH consistency asserted at construction. Every asset that enters in a call leaves in the same call. |
 
 ### Why the factory is one contract
 

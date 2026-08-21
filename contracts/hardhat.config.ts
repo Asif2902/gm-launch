@@ -75,6 +75,15 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 31337,
       allowUnlimitedContractSize: false,
+      /**
+       * Lets test/07 fork Base mainnet via `hardhat_reset`. Hardhat refuses to execute against
+       * historical blocks of a chain whose hardfork activations it does not know, and Base is
+       * not one of the chains it ships with. Base has been post-Cancun since well before any
+       * block this test would fork from.
+       */
+      chains: {
+        8453: { hardforkHistory: { cancun: 0 } },
+      },
     },
     baseSepolia: {
       url: BASE_SEPOLIA_RPC_URL,

@@ -570,7 +570,11 @@ contract PumperFactory is Ownable2Step, ReentrancyGuard {
     function getTokens(uint256 offset, uint256 limit) external view returns (address[] memory page) {
         uint256 total = allTokens.length;
         if (offset >= total) return new address[](0);
-        uint256 end = Math.min(offset + limit, total);
+        // Clamp against the remaining length rather than computing `offset + limit`: an
+        // unbounded `limit` (type(uint256).max is a natural "give me everything") would
+        // overflow that sum and turn a paginated read into an arithmetic panic.
+        uint256 remaining = total - offset;
+        uint256 end = offset + Math.min(limit, remaining);
         page = new address[](end - offset);
         for (uint256 i = offset; i < end; ++i) {
             page[i - offset] = allTokens[i];
@@ -702,6 +706,11 @@ contract PumperFactory is Ownable2Step, ReentrancyGuard {
 
         grossEthOut =
             BondingCurve.getEthOut(tokensIn, VIRTUAL_ETH_RESERVE + ethReserve, tokenReserve);
+        // Mirrors the guard in {sell}. The curve prices against the *virtual* reserve, so an
+        // oversized `tokensIn` — more than the circulating supply, which a UI can easily send
+        // as a hypothetical — quotes more ETH out than the curve really holds. Without this the
+        // subtraction below panics instead of returning the same clear error the trade would.
+        if (grossEthOut > ethReserve) revert InsufficientCurveLiquidity();
         fee = (grossEthOut * SELL_FEE_BPS) / BPS_DENOMINATOR;
         ethOut = grossEthOut - fee;
 

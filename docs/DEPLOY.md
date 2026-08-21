@@ -30,25 +30,33 @@ cd contracts && npx hardhat run scripts/whoami.ts --network baseSepolia
 ```bash
 cd contracts
 npm run build
-npm test                                   # 66 tests
+npm test                                   # 79 tests
 
 DEPLOY_UNISWAP_V2=true npm run deploy:baseSepolia
 ```
 
-`DEPLOY_UNISWAP_V2=true` deploys **your own** `UniswapV2Factory` rather than using the network's.
-On a testnet that is usually what you want: you own it, nobody can pre-seed pairs against it, and
-it can't disappear. The bytecode is the genuine `@uniswap/v2-core` factory (solc 0.5.16), not a
+`DEPLOY_UNISWAP_V2=true` deploys **your own** `UniswapV2Factory` — plus `TestUniswapV2Router02`,
+the local router stand-in — rather than using the network's canonical deployment. On a testnet
+that is sometimes what you want: you own it, nobody can pre-seed pairs against it, and it can't
+disappear. The factory bytecode is the genuine `@uniswap/v2-core` factory (solc 0.5.16), not a
 reduced re-implementation, so pair behaviour — `MINIMUM_LIQUIDITY`, the exact `mint` maths
 migration depends on — matches mainnet.
 
-**On mainnet, leave the flag unset.** The canonical factory in `scripts/config.ts` is used instead.
+**On mainnet, leave the flag unset.** The canonical router and factory in `scripts/config.ts` are
+used instead.
 
-> The migrator never calls a router — it uses `getPair`/`createPair` and `pair.mint` directly — so
-> a factory is the only Uniswap contract this protocol needs, on any network.
+> The migrator adds liquidity through the canonical `UniswapV2Router02` and resolves the pair
+> through the factory registry, so both addresses matter. They must belong to the same Uniswap V2
+> deployment: the migrator's constructor asserts `router.factory()` and `router.WETH()` against
+> the addresses it is given, and `deploy.ts` checks the same thing beforehand so a mismatch costs
+> a script run instead of a deployment.
 >
-> For reference, Base Sepolia *does* already host a V2 factory at
-> `0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e` (verified: genuine v2-core bytecode). Point
-> `scripts/config.ts` at it and skip the flag if you'd rather use that one.
+> The flag cannot be used with the canonical Router02, which resolves pairs through a hard-coded
+> init-code hash that only matches the canonical factory — that is why it deploys the stand-in
+> router. Base Sepolia already hosts a full V2 deployment (router
+> `0x1689E7B1F10000AE47eBfE339a4f69dECd19F602`, factory
+> `0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e`), which `scripts/config.ts` points at; skip the
+> flag to use it and exercise the real router before mainnet.
 
 The script deploys in nonce order so the migrator and launchpad can hold each other as
 immutables, then asserts the wiring and 10 protocol constants before writing
@@ -153,7 +161,7 @@ npm run check      # contracts tests + indexer typecheck + web typecheck + subgr
 
 ## Mainnet differences
 
-1. Drop `DEPLOY_UNISWAP_V2` — use the canonical factory in `scripts/config.ts`.
+1. Drop `DEPLOY_UNISWAP_V2` — use the canonical router and factory in `scripts/config.ts`.
 2. Set `FEE_RECIPIENT` and `OWNER` to addresses you actually control. The owner's *only* power
    is changing the fee recipient; it cannot touch reserves, trading or migration.
 3. `npm run sync -- base`, and `npm run sync -- base` in `subgraph/` for the `base` network.

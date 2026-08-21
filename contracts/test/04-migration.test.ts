@@ -315,13 +315,18 @@ describe("Migration to Uniswap V2", () => {
   });
 
   it("binds the migrator and launchpad to each other at deploy time", async () => {
-    const { tokenImplementation, weth, uniswapFactory, deployer, feeRecipient } =
+    const { tokenImplementation, weth, uniswapFactory, uniswapRouter, deployer, feeRecipient } =
       await loadFixture(deployFixture);
 
     // A migrator pointed at the wrong launchpad cannot be adopted.
     const strayMigrator = await (
       await ethers.getContractFactory("UniswapV2Migrator")
-    ).deploy(feeRecipient.address, await uniswapFactory.getAddress(), await weth.getAddress());
+    ).deploy(
+      feeRecipient.address,
+      await uniswapRouter.getAddress(),
+      await uniswapFactory.getAddress(),
+      await weth.getAddress(),
+    );
 
     const PumperFactory = await ethers.getContractFactory("PumperFactory");
     await expect(

@@ -20,11 +20,15 @@ interface IPumperMigrator {
      * @return pair          The Uniswap V2 pair holding the new liquidity.
      * @return ethDeposited  ETH actually added as liquidity.
      * @return tokenDeposited Tokens actually added as liquidity.
-     * @return lpBurned      LP tokens minted and then permanently burned.
-     * @return tokensBurned  Tokens that could not be deposited and were burned instead
-     *                       (non-zero only in the pre-seeded-pair edge case).
-     * @return ethReturned   ETH that could not be deposited and was returned to the launchpad
-     *                       (non-zero only in the pre-seeded-pair edge case).
+     * @return lpBurned      LP tokens permanently burned. Normally exactly what the add minted;
+     *                       it also sweeps up LP anyone donated to the migrator, which is why
+     *                       the migrator checks the *delta* rather than this absolute figure.
+     * @return tokensBurned  Tokens the migrator held after the deposit and burned instead of
+     *                       keeping — the undeposited remainder (non-zero only in the
+     *                       pre-seeded-pair edge case) plus any donated tokens.
+     * @return ethReturned   ETH left with the migrator after the deposit and sent back to the
+     *                       launchpad (non-zero only in the pre-seeded-pair edge case). The
+     *                       launchpad books it into the fee ledger.
      */
     function migrate(address token, uint256 tokenAmount)
         external
