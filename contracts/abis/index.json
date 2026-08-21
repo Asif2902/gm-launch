@@ -2055,6 +2055,11 @@
         },
         {
           "internalType": "address",
+          "name": "uniswapV2Router_",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
           "name": "uniswapV2Factory_",
           "type": "address"
         },
@@ -2094,12 +2099,37 @@
     },
     {
       "inputs": [],
+      "name": "PairCreationFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "PairMintFailed",
       "type": "error"
     },
     {
       "inputs": [],
+      "name": "PairMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PairRatioUnusable",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "ReentrancyGuardReentrantCall",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RouterFactoryMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RouterWethMismatch",
       "type": "error"
     },
     {
@@ -2272,6 +2302,19 @@
       "outputs": [
         {
           "internalType": "contract IUniswapV2Factory",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "uniswapV2Router",
+      "outputs": [
+        {
+          "internalType": "contract IUniswapV2Router02",
           "name": "",
           "type": "address"
         }

@@ -21,6 +21,7 @@ async function main() {
       address: record.contracts.UniswapV2Migrator,
       constructorArguments: [
         record.contracts.PumperFactory,
+        record.external.uniswapV2Router,
         record.external.uniswapV2Factory,
         record.external.weth,
       ],

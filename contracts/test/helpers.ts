@@ -7,6 +7,7 @@ import type {
   PumperToken,
   UniswapV2Migrator,
   MockWETH,
+  TestUniswapV2Router02,
 } from "../typechain-types";
 
 // --- protocol constants, mirrored from docs/ECONOMICS.md -----------------------------------
@@ -48,6 +49,7 @@ export interface Deployment {
   tokenImplementation: PumperToken;
   weth: MockWETH;
   uniswapFactory: any;
+  uniswapRouter: TestUniswapV2Router02;
   deployer: HardhatEthersSigner;
   alice: HardhatEthersSigner;
   bob: HardhatEthersSigner;
@@ -68,6 +70,13 @@ export async function deployFixture(): Promise<Deployment> {
     await ethers.getContractFactory("UniswapV2Factory")
   ).deploy(ethers.ZeroAddress);
 
+  // Stands in for the canonical UniswapV2Router02 locally; see the contract's own notes on
+  // why the real Router02 cannot resolve a locally compiled pair.
+  const uniswapRouter = (await (
+    await ethers.getContractFactory("TestUniswapV2Router02")
+  ).deploy(await uniswapFactory.getAddress(), await weth.getAddress())) as unknown as TestUniswapV2Router02;
+  await uniswapRouter.waitForDeployment();
+
   const tokenImplementation = await (await ethers.getContractFactory("PumperToken")).deploy();
   await tokenImplementation.waitForDeployment();
 
@@ -77,7 +86,12 @@ export async function deployFixture(): Promise<Deployment> {
 
   const migrator = await (
     await ethers.getContractFactory("UniswapV2Migrator")
-  ).deploy(predictedLaunchpad, await uniswapFactory.getAddress(), await weth.getAddress());
+  ).deploy(
+    predictedLaunchpad,
+    await uniswapRouter.getAddress(),
+    await uniswapFactory.getAddress(),
+    await weth.getAddress(),
+  );
 
   const factory = await (
     await ethers.getContractFactory("PumperFactory")
@@ -96,6 +110,7 @@ export async function deployFixture(): Promise<Deployment> {
     tokenImplementation,
     weth,
     uniswapFactory,
+    uniswapRouter,
     deployer,
     alice,
     bob,

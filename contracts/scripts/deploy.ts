@@ -70,52 +70,63 @@ async function main() {
   console.log(`Balance:  ${ethers.formatEther(await ethers.provider.getBalance(deployer.address))} ETH\n`);
 
   // --- external dependencies ---------------------------------------------------------------
-  let { uniswapV2Factory, weth } = configFor(networkName) ?? { uniswapV2Factory: "", weth: "" };
+  let { uniswapV2Router, uniswapV2Factory, weth } =
+    configFor(networkName) ?? { uniswapV2Router: "", uniswapV2Factory: "", weth: "" };
 
   /**
-   * `DEPLOY_UNISWAP_V2=true` deploys our own V2 factory instead of using the network's.
+   * `DEPLOY_UNISWAP_V2=true` deploys our own V2 factory (plus the local router stand-in)
+   * instead of using the network's canonical deployment.
    *
-   * On a testnet that is usually what you want: you own the deployment, nobody else can
-   * pre-seed pairs against it, and it can't disappear. The bytecode is the genuine
-   * @uniswap/v2-core factory (solc 0.5.16) rather than a reduced re-implementation, so pair
-   * behaviour — including `MINIMUM_LIQUIDITY` and the exact `mint` maths migration relies on —
-   * is identical to mainnet.
+   * This is a *testnet-only* convenience: you own the deployment, nobody else can pre-seed
+   * pairs against it, and it can't disappear. The factory bytecode is the genuine
+   * @uniswap/v2-core factory (solc 0.5.16), so pair behaviour — including `MINIMUM_LIQUIDITY`
+   * and the exact `mint` maths migration relies on — is identical to mainnet. The router,
+   * however, is `TestUniswapV2Router02`, not the canonical Router02, because Router02 resolves
+   * pairs through a hard-coded init-code hash that only matches the canonical factory.
    *
-   * The migrator never calls a router (it uses `getPair`/`createPair` and `pair.mint` directly),
-   * so a factory is the only Uniswap contract this protocol needs. On mainnet, leave this unset
-   * and the canonical factory in scripts/config.ts is used.
+   * On mainnet, leave this unset: the canonical router and factory in scripts/config.ts are
+   * used, and the migrator's constructor asserts they belong together.
    */
-  // Tracks whether the V2 factory is one we control. Recorded in the deployment file because it
-  // decides what changes on the way to mainnet: a factory we own is a testnet convenience, and
-  // mainnet must switch to the canonical one.
+  // Tracks whether the V2 deployment is one we control. Recorded in the deployment file because
+  // it decides what changes on the way to mainnet: a factory we own is a testnet convenience,
+  // and mainnet must switch to the canonical one.
   let uniswapV2FactoryIsOurs = process.env.DEPLOY_UNISWAP_V2 === "true";
 
-  // Explicit override wins over both the network default and DEPLOY_UNISWAP_V2 — lets a re-run
-  // reuse a factory a previous attempt already paid for. Keep DEPLOY_UNISWAP_V2 set alongside it
-  // so the ownership flag stays accurate across the re-run.
-  if (process.env.UNISWAP_V2_FACTORY_ADDRESS) {
-    uniswapV2Factory = process.env.UNISWAP_V2_FACTORY_ADDRESS;
+  // Explicit overrides win over both the network default and DEPLOY_UNISWAP_V2 — they let a
+  // re-run reuse contracts a previous attempt already paid for. Keep DEPLOY_UNISWAP_V2 set
+  // alongside them so the ownership flag stays accurate across the re-run.
+  if (process.env.UNISWAP_V2_ROUTER_ADDRESS || process.env.UNISWAP_V2_FACTORY_ADDRESS) {
+    uniswapV2Router = process.env.UNISWAP_V2_ROUTER_ADDRESS || uniswapV2Router;
+    uniswapV2Factory = process.env.UNISWAP_V2_FACTORY_ADDRESS || uniswapV2Factory;
+    console.log(`Using UniswapV2Router from env:  ${uniswapV2Router}`);
     console.log(`Using UniswapV2Factory from env: ${uniswapV2Factory}`);
   } else if (process.env.DEPLOY_UNISWAP_V2 === "true") {
-    console.log("DEPLOY_UNISWAP_V2=true — deploying our own UniswapV2Factory...");
-    const ownFactory = await (
-      await ethers.getContractFactory("UniswapV2Factory")
-    ).deploy(deployer.address); // feeToSetter; feeTo stays unset, so no protocol fee
-    await ownFactory.waitForDeployment();
-    uniswapV2Factory = await ownFactory.getAddress();
-    uniswapV2FactoryIsOurs = true;
-    console.log(`  UniswapV2Factory: ${uniswapV2Factory}`);
-
     if (!weth) {
       throw new Error(
         `No WETH configured for ${networkName}. Add one to scripts/config.ts — the pair needs a ` +
           `wrapped-native token and deploying a second one would fragment liquidity.`,
       );
     }
+    console.log("DEPLOY_UNISWAP_V2=true — deploying our own UniswapV2Factory + router...");
+    const ownFactory = await (
+      await ethers.getContractFactory("UniswapV2Factory")
+    ).deploy(deployer.address); // feeToSetter; feeTo stays unset, so no protocol fee
+    await ownFactory.waitForDeployment();
+    uniswapV2Factory = await ownFactory.getAddress();
+
+    const ownRouter = await (
+      await ethers.getContractFactory("TestUniswapV2Router02")
+    ).deploy(uniswapV2Factory, weth);
+    await ownRouter.waitForDeployment();
+    uniswapV2Router = await ownRouter.getAddress();
+
+    uniswapV2FactoryIsOurs = true;
+    console.log(`  UniswapV2Factory: ${uniswapV2Factory}`);
+    console.log(`  UniswapV2Router:  ${uniswapV2Router}`);
     console.log(`  Using WETH:       ${weth}\n`);
   }
 
-  if (!uniswapV2Factory || !weth) {
+  if (!uniswapV2Router || !uniswapV2Factory || !weth) {
     console.log("No external config for this network — deploying a local Uniswap V2 + WETH...");
     const localWeth = await (await ethers.getContractFactory("MockWETH")).deploy();
     await localWeth.waitForDeployment();
@@ -126,11 +137,21 @@ async function main() {
 
     weth = await localWeth.getAddress();
     uniswapV2Factory = await localUniswap.getAddress();
+
+    const localRouter = await (
+      await ethers.getContractFactory("TestUniswapV2Router02")
+    ).deploy(uniswapV2Factory, weth);
+    await localRouter.waitForDeployment();
+    uniswapV2Router = await localRouter.getAddress();
+
+    uniswapV2FactoryIsOurs = true;
     console.log(`  WETH:            ${weth}`);
-    console.log(`  UniswapV2Factory:${uniswapV2Factory}\n`);
+    console.log(`  UniswapV2Factory:${uniswapV2Factory}`);
+    console.log(`  UniswapV2Router: ${uniswapV2Router}\n`);
   } else {
     // Fail fast rather than deploying against an address with no code.
     for (const [label, address] of [
+      ["UniswapV2Router", uniswapV2Router],
       ["UniswapV2Factory", uniswapV2Factory],
       ["WETH", weth],
     ] as const) {
@@ -138,6 +159,25 @@ async function main() {
       if (code === "0x") throw new Error(`${label} at ${address} has no code on ${networkName}`);
       console.log(`Using ${label}: ${address}`);
     }
+
+    // The migrator's constructor enforces this too, but checking here costs one free RPC call
+    // instead of one reverted deployment — and it catches a copy-paste of addresses from the
+    // wrong chain, which is the realistic failure mode.
+    const router = await ethers.getContractAt("IUniswapV2Router02", uniswapV2Router);
+    const routerFactory = await router.factory();
+    const routerWeth = await router.WETH();
+    if (routerFactory.toLowerCase() !== uniswapV2Factory.toLowerCase()) {
+      throw new Error(
+        `Router ${uniswapV2Router} reports factory ${routerFactory}, but the config says ` +
+          `${uniswapV2Factory}. These must be the same Uniswap V2 deployment.`,
+      );
+    }
+    if (routerWeth.toLowerCase() !== weth.toLowerCase()) {
+      throw new Error(
+        `Router ${uniswapV2Router} reports WETH ${routerWeth}, but the config says ${weth}.`,
+      );
+    }
+    console.log("  router.factory() and router.WETH() match the configured addresses");
     console.log();
   }
 
@@ -170,11 +210,38 @@ async function main() {
 
   // --- 2. predict the launchpad address ------------------------------------------------------
   const migratorNonce = lastNonce + 1;
-  const launchpadNonce = migratorNonce + 1;
-  const predictedLaunchpad = ethers.getCreateAddress({
+  let launchpadNonce = migratorNonce + 1;
+  let predictedLaunchpad = ethers.getCreateAddress({
     from: deployer.address,
     nonce: launchpadNonce,
   });
+
+  // Reusing a migrator inverts the problem. Its `launchpad` immutable is already fixed, so the
+  // launchpad has to land on *that* address rather than on whatever the nonce arithmetic above
+  // predicts — and that arithmetic assumed this run deployed the migrator itself, which it did
+  // not. Take the migrator's own word for the target, and derive the nonce that reaches it.
+  // Without this a resumed run aims one nonce too high and dies in the launchpad constructor
+  // with `MigratorMismatch`, after paying for the deployment.
+  if (process.env.MIGRATOR_ADDRESS) {
+    const boundLaunchpad = await (
+      await ethers.getContractAt("UniswapV2Migrator", process.env.MIGRATOR_ADDRESS)
+    ).launchpad();
+    const nextNonce = await ethers.provider.getTransactionCount(deployer.address);
+    const nextAddress = ethers.getCreateAddress({ from: deployer.address, nonce: nextNonce });
+
+    if (nextAddress.toLowerCase() !== boundLaunchpad.toLowerCase()) {
+      throw new Error(
+        `Cannot resume: migrator ${process.env.MIGRATOR_ADDRESS} is bound to launchpad ` +
+          `${boundLaunchpad}, but the deployer's next transaction (nonce ${nextNonce}) would ` +
+          `create ${nextAddress}. The migrator's binding is immutable, so the launchpad can only ` +
+          `be deployed from this account at nonce ` +
+          `${nextNonce} — send no other transactions from it, or deploy a fresh migrator.`,
+      );
+    }
+    launchpadNonce = nextNonce;
+    predictedLaunchpad = boundLaunchpad;
+  }
+
   console.log(`Predicted PumperFactory:      ${predictedLaunchpad} (nonce ${launchpadNonce})`);
 
   // --- 3. migrator ---------------------------------------------------------------------------
@@ -185,7 +252,13 @@ async function main() {
   } else {
     const migrator = await (
       await ethers.getContractFactory("UniswapV2Migrator")
-    ).deploy(predictedLaunchpad, uniswapV2Factory, weth);
+    ).deploy(predictedLaunchpad, uniswapV2Router, uniswapV2Factory, weth, {
+      // Pin the nonce instead of letting ethers query it. The whole address-prediction scheme
+      // rests on these two landing on consecutive nonces, and a load-balanced public RPC can
+      // answer `getTransactionCount` from a node that has not seen the previous deploy yet —
+      // which resends the *previous* nonce and fails as "replacement transaction underpriced".
+      nonce: migratorNonce,
+    });
     await migrator.waitForDeployment();
     migratorAddress = await migrator.getAddress();
     console.log(`UniswapV2Migrator:            ${migratorAddress} (nonce ${migratorNonce})`);
@@ -205,6 +278,12 @@ async function main() {
     );
   }
 
+  // The launchpad's constructor *calls* the migrator (`migrator.launchpad()`), so the migrator
+  // must be visible to whichever node estimates gas for that deployment. On a load-balanced
+  // public RPC it often is not yet, and the estimate reverts — with no revert reason, which
+  // looks alarmingly like a genuine wiring failure. Wait for the code first.
+  await waitForCode(migratorAddress, "UniswapV2Migrator");
+
   // --- 4. launchpad --------------------------------------------------------------------------
   let factoryAddress = process.env.FACTORY_ADDRESS ?? "";
 
@@ -213,7 +292,9 @@ async function main() {
   } else {
     const deployed = await (
       await ethers.getContractFactory("PumperFactory")
-    ).deploy(tokenImplementationAddress, migratorAddress, feeRecipient, owner);
+    ).deploy(tokenImplementationAddress, migratorAddress, feeRecipient, owner, {
+      nonce: launchpadNonce,
+    });
     await deployed.waitForDeployment();
     factoryAddress = await deployed.getAddress();
     console.log(`PumperFactory:                ${factoryAddress}`);
@@ -243,6 +324,7 @@ async function main() {
     ["factory.MIGRATION_THRESHOLD", await factory.MIGRATION_THRESHOLD(), ethers.parseEther("5")],
     ["factory.BUY_FEE_BPS", await factory.BUY_FEE_BPS(), 20n],
     ["factory.SELL_FEE_BPS", await factory.SELL_FEE_BPS(), 30n],
+    ["migrator.uniswapV2Router", await migratorContract.uniswapV2Router(), uniswapV2Router],
     ["migrator.uniswapV2Factory", await migratorContract.uniswapV2Factory(), uniswapV2Factory],
     ["migrator.weth", await migratorContract.weth(), weth],
   ];
@@ -269,6 +351,7 @@ async function main() {
       PumperTokenImplementation: tokenImplementationAddress,
     },
     external: {
+      uniswapV2Router,
       uniswapV2Factory,
       weth,
       uniswapV2FactoryIsOurs,

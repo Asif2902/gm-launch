@@ -114,8 +114,10 @@ and local overrides in those files are preserved.
 that executes the *real* bonding-curve arithmetic, so charts, graduations and every derived
 figure match `docs/ECONOMICS.md` exactly. See [`web/README.md`](web/README.md).
 
-Everything also runs fully locally — `npm run deploy:local` deploys a WETH9 stand-in and a real
-`UniswapV2Factory` alongside the protocol, so the migration path works without a testnet.
+Everything also runs fully locally — `npm run deploy:local` deploys a WETH9 stand-in, a real
+`UniswapV2Factory` and a router stand-in alongside the protocol, so the migration path works
+without a testnet. The genuine `UniswapV2Router02` is exercised by the Base mainnet fork test in
+`contracts/test/07-uniswap-integration.test.ts` (runs when `BASE_RPC_URL` is set).
 
 ### External dependencies (verified live on-chain)
 
@@ -124,6 +126,7 @@ pairs at time of writing) and WETH answers `symbol() == "WETH"`.
 
 | | Address |
 |---|---|
+| UniswapV2Router02 | [`0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24`](https://basescan.org/address/0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24) |
 | UniswapV2Factory | [`0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6`](https://basescan.org/address/0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6) |
 | WETH9 | [`0x4200000000000000000000000000000000000006`](https://basescan.org/address/0x4200000000000000000000000000000000000006) |
 
@@ -131,12 +134,17 @@ pairs at time of writing) and WETH answers `symbol() == "WETH"`.
 
 | | Address |
 |---|---|
+| UniswapV2Router02 | [`0x1689E7B1F10000AE47eBfE339a4f69dECd19F602`](https://sepolia.basescan.org/address/0x1689E7B1F10000AE47eBfE339a4f69dECd19F602) |
 | UniswapV2Factory | [`0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e`](https://sepolia.basescan.org/address/0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e) |
 | WETH9 | [`0x4200000000000000000000000000000000000006`](https://sepolia.basescan.org/address/0x4200000000000000000000000000000000000006) |
 
-Both were checked on-chain before wiring: the factory answers `allPairsLength()` and is the
-`factory()` of the canonical Router02; WETH answers `symbol() == "WETH"`. The deploy script
-re-checks that code exists at each address and aborts otherwise.
+All were checked on-chain before wiring: on each network the router reports the factory and WETH
+listed beside it, and the factory answers `allPairsLength()`. The deploy script re-checks that
+code exists at each address *and* that `router.factory()`/`router.WETH()` match, aborting
+otherwise; the migrator's constructor enforces the same relationship on-chain.
+
+> Note the two networks host **different** V2 deployments. The Base mainnet factory address has
+> no code on Base Sepolia, so the addresses are not interchangeable.
 
 ---
 
